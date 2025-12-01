@@ -1,10 +1,79 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { SimulationConfig } from '../types';
 
 interface RuleMatrixProps {
   config: SimulationConfig;
   onChange: (newConfig: SimulationConfig) => void;
 }
+
+interface MatrixCellProps {
+  row: number;
+  col: number;
+  value: number;
+  onChange: (r: number, c: number, v: number) => void;
+  color: string;
+}
+
+// Individual Cell Component to handle local editing state
+const MatrixCell: React.FC<MatrixCellProps> = ({ 
+  row, 
+  col, 
+  value, 
+  onChange, 
+  color 
+}) => {
+  const [text, setText] = useState(value.toString());
+  const [isFocused, setIsFocused] = useState(false);
+
+  // Sync with prop changes when not being edited (e.g. AI generation or Randomize)
+  useEffect(() => {
+    if (!isFocused) {
+      // Format nicely: max 2 decimals, remove trailing zeros
+      setText(Number(value.toFixed(2)).toString());
+    }
+  }, [value, isFocused]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newText = e.target.value;
+    setText(newText);
+    
+    // Only update parent if it's a valid number
+    // We allow typing "-" or empty string locally without updating parent
+    const parsed = parseFloat(newText);
+    if (!isNaN(parsed)) {
+      onChange(row, col, parsed);
+    }
+  };
+
+  const handleBlur = () => {
+    setIsFocused(false);
+    // Revert to valid value if current text is invalid (e.g. "-")
+    // Or just clean up the formatting
+    const parsed = parseFloat(text);
+    if (isNaN(parsed)) {
+      setText(Number(value.toFixed(2)).toString());
+    } else {
+      // Ensure we display the value that is actually in the state
+      setText(Number(parsed.toFixed(2)).toString());
+    }
+  };
+
+  return (
+    <div 
+      className="relative w-8 h-8 rounded border border-slate-700 overflow-hidden"
+      style={{ backgroundColor: color }}
+    >
+      <input 
+        type="text" 
+        value={text}
+        onFocus={() => setIsFocused(true)}
+        onBlur={handleBlur}
+        onChange={handleChange}
+        className="w-full h-full bg-transparent text-center text-[10px] text-white font-mono focus:outline-none focus:bg-black/40 placeholder-transparent"
+      />
+    </div>
+  );
+};
 
 export const RuleMatrix: React.FC<RuleMatrixProps> = ({ config, onChange }) => {
   const handleCellChange = (row: number, col: number, val: number) => {
@@ -14,9 +83,11 @@ export const RuleMatrix: React.FC<RuleMatrixProps> = ({ config, onChange }) => {
   };
 
   const getCellColor = (val: number) => {
+    // Clamp for visualization purposes
+    const clamped = Math.max(-1, Math.min(1, val));
     // Green for attraction (positive), Red for repulsion (negative)
-    if (val > 0) return `rgba(34, 197, 94, ${Math.abs(val)})`;
-    return `rgba(239, 68, 68, ${Math.abs(val)})`;
+    if (clamped > 0) return `rgba(34, 197, 94, ${Math.abs(clamped)})`;
+    return `rgba(239, 68, 68, ${Math.abs(clamped)})`;
   };
 
   return (
@@ -37,26 +108,14 @@ export const RuleMatrix: React.FC<RuleMatrixProps> = ({ config, onChange }) => {
             
             {/* Cells */}
             {config.interactionMatrix[rowIdx].map((val, colIdx) => (
-              <div 
-                key={`${rowIdx}-${colIdx}`} 
-                className="relative w-8 h-8 rounded border border-slate-700 overflow-hidden cursor-pointer group"
-                style={{ backgroundColor: getCellColor(val) }}
-                title={`Force from ${colIdx} on ${rowIdx}: ${val.toFixed(2)}`}
-              >
-                 {/* Invisible range input for editing */}
-                 <input 
-                  type="range" 
-                  min="-1" 
-                  max="1" 
-                  step="0.1"
-                  value={val}
-                  onChange={(e) => handleCellChange(rowIdx, colIdx, parseFloat(e.target.value))}
-                  className="opacity-0 w-full h-full cursor-pointer absolute inset-0 z-10"
-                 />
-                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-[8px] font-mono text-white drop-shadow-md">
-                    {val.toFixed(1)}
-                 </div>
-              </div>
+              <MatrixCell 
+                key={`${rowIdx}-${colIdx}`}
+                row={rowIdx}
+                col={colIdx}
+                value={val}
+                onChange={handleCellChange}
+                color={getCellColor(val)}
+              />
             ))}
           </React.Fragment>
         ))}
