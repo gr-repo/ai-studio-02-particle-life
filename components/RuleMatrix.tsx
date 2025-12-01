@@ -65,10 +65,21 @@ const MatrixCell: React.FC<MatrixCellProps> = ({
     >
       <input 
         type="text" 
+        inputMode="decimal"
         value={text}
-        onFocus={() => setIsFocused(true)}
+        onFocus={(e) => {
+          setIsFocused(true);
+          e.target.select();
+        }}
         onBlur={handleBlur}
         onChange={handleChange}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        autoComplete="off"
+        autoCorrect="off"
+        spellCheck="false"
         className="w-full h-full bg-transparent text-center text-[10px] text-white font-mono focus:outline-none focus:bg-black/40 placeholder-transparent"
       />
     </div>
@@ -82,6 +93,18 @@ export const RuleMatrix: React.FC<RuleMatrixProps> = ({ config, onChange }) => {
     onChange({ ...config, interactionMatrix: newMatrix });
   };
 
+  const setAllZero = () => {
+    const newMatrix = config.interactionMatrix.map(row => row.map(() => 0));
+    onChange({ ...config, interactionMatrix: newMatrix });
+  };
+
+  const setIdentity = () => {
+    const newMatrix = config.interactionMatrix.map((row, r) => 
+      row.map((_, c) => (r === c ? 1 : 0))
+    );
+    onChange({ ...config, interactionMatrix: newMatrix });
+  };
+
   const getCellColor = (val: number) => {
     // Clamp for visualization purposes
     const clamped = Math.max(-1, Math.min(1, val));
@@ -92,7 +115,25 @@ export const RuleMatrix: React.FC<RuleMatrixProps> = ({ config, onChange }) => {
 
   return (
     <div className="flex flex-col gap-2 p-2 bg-slate-800 rounded-lg shadow-lg">
-      <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Interaction Rules</h3>
+      <div className="flex justify-between items-center mb-1">
+        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Interaction Rules</h3>
+        <div className="flex gap-2">
+          <button 
+            onClick={setAllZero}
+            className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-[10px] text-slate-300 rounded border border-slate-600 transition-colors"
+            title="Set all interactions to 0"
+          >
+            Zero
+          </button>
+          <button 
+            onClick={setIdentity}
+            className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-[10px] text-slate-300 rounded border border-slate-600 transition-colors"
+            title="Set diagonal to 1, others to 0"
+          >
+            Identity
+          </button>
+        </div>
+      </div>
       <div className="grid grid-cols-7 gap-1">
         {/* Header Row */}
         <div className="col-span-1"></div>
