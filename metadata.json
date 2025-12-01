@@ -1,0 +1,5 @@
+{
+  "name": "Particle Life Simulator",
+  "description": "An interactive emergence simulation where complex life-like patterns evolve from simple particle interaction rules. Features AI-generated rule sets powered by Gemini.",
+  "requestFramePermissions": []
+}
