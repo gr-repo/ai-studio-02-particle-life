@@ -6,6 +6,7 @@ export interface SimulationConfig {
   timeScale: number;    // Simulation speed
   cutOffRadius: number; // Max interaction distance
   forceFactor: number;  // Multiplier for forces
+  rippleStrength: number; // Strength of mouse interaction
 }
 
 export const DEFAULT_COLORS = [

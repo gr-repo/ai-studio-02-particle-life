@@ -1,5 +1,12 @@
 import { SimulationConfig } from '../types';
 
+interface Ripple {
+  x: number;
+  y: number;
+  age: number;
+  strength: number;
+}
+
 export class ParticleEngine {
   public canvas: HTMLCanvasElement;
   public ctx: CanvasRenderingContext2D;
@@ -11,6 +18,9 @@ export class ParticleEngine {
   private vy: Float32Array;
   private group: Uint8Array;
   private numParticles: number = 0;
+
+  // Interaction State
+  private ripples: Ripple[] = [];
 
   // Config Cache
   private config: SimulationConfig;
@@ -74,6 +84,18 @@ export class ParticleEngine {
     }
   }
 
+  public triggerRipple(x: number, y: number) {
+    // Only trigger if enabled
+    if (this.config.rippleStrength > 0) {
+      this.ripples.push({ 
+        x, 
+        y, 
+        age: 0, 
+        strength: this.config.rippleStrength 
+      });
+    }
+  }
+
   public update() {
     const { interactionMatrix, cutOffRadius, forceFactor, friction, timeScale } = this.config;
     const rMax = cutOffRadius;
@@ -82,7 +104,60 @@ export class ParticleEngine {
     // Pre-calculate friction factor: v *= (1 - friction)
     const velocityRetention = Math.max(0, 1 - friction); 
 
-    // O(N^2) loop - Optimized for simple array access
+    // Apply Ripples
+    const RIPPLE_SPEED = 6.0;
+    const RIPPLE_WIDTH = 30;
+
+    for (let r = this.ripples.length - 1; r >= 0; r--) {
+      const ripple = this.ripples[r];
+      ripple.age++;
+      
+      const currentRadius = ripple.age * RIPPLE_SPEED;
+      // Decay strength over time
+      ripple.strength *= 0.95;
+
+      // Remove dead ripples
+      if (ripple.strength < 0.05 || ripple.age > 300) {
+        this.ripples.splice(r, 1);
+        continue;
+      }
+
+      const waveStrength = ripple.strength * 5.0; // Scale up for noticeable effect
+
+      // Apply ripple force to all particles
+      for (let i = 0; i < this.numParticles; i++) {
+        let dx = this.x[i] - ripple.x;
+        let dy = this.y[i] - ripple.y;
+
+        // Correct for torus topology for ripples is tricky visually, 
+        // so we usually just do local ripples or explicit wrap.
+        // For simplicity, let's treat ripples as non-wrapping local events 
+        // or apply the nearest wrap distance.
+        if (dx > this.width * 0.5) dx -= this.width;
+        if (dx < -this.width * 0.5) dx += this.width;
+        if (dy > this.height * 0.5) dy -= this.height;
+        if (dy < -this.height * 0.5) dy += this.height;
+
+        const distSq = dx*dx + dy*dy;
+        const dist = Math.sqrt(distSq);
+
+        // If particle is within the wave front
+        const distFromWave = Math.abs(dist - currentRadius);
+        if (distFromWave < RIPPLE_WIDTH) {
+           // Normalised distance within width (0 to 1)
+           const intensity = 1 - (distFromWave / RIPPLE_WIDTH);
+           // Push away
+           if (dist > 0.001) {
+             const pushX = (dx / dist) * intensity * waveStrength;
+             const pushY = (dy / dist) * intensity * waveStrength;
+             this.vx[i] += pushX;
+             this.vy[i] += pushY;
+           }
+        }
+      }
+    }
+
+    // Particle Interactions O(N^2)
     for (let i = 0; i < this.numParticles; i++) {
       let fx = 0;
       let fy = 0;
@@ -143,6 +218,17 @@ export class ParticleEngine {
     // Clear
     this.ctx.fillStyle = '#0f172a'; // Match body background
     this.ctx.fillRect(0, 0, this.width, this.height);
+
+    // Draw Ripples
+    this.ctx.lineWidth = 2;
+    for (const ripple of this.ripples) {
+      const radius = ripple.age * 6.0; // Match speed in update
+      const alpha = Math.max(0, Math.min(1, ripple.strength));
+      this.ctx.strokeStyle = `rgba(100, 200, 255, ${alpha * 0.5})`;
+      this.ctx.beginPath();
+      this.ctx.arc(ripple.x, ripple.y, radius, 0, Math.PI * 2);
+      this.ctx.stroke();
+    }
 
     // Draw Particles
     for (let g = 0; g < this.config.colors.length; g++) {

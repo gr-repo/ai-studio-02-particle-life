@@ -4,6 +4,13 @@ import { SimulationConfig } from '../types';
 import { RuleMatrix } from './RuleMatrix';
 import { generateRules } from '../services/geminiService';
 
+declare global {
+  interface AIStudio {
+    hasSelectedApiKey: () => Promise<boolean>;
+    openSelectKey: () => Promise<void>;
+  }
+}
+
 interface ControlPanelProps {
   config: SimulationConfig;
   setConfig: (c: SimulationConfig) => void;
@@ -32,6 +39,20 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     if (!prompt.trim()) return;
     setIsGenerating(true);
     setErrorMsg(null);
+
+    // On-demand Auth Check for AI Studio environments
+    if (window.aistudio) {
+      try {
+        const hasKey = await window.aistudio.hasSelectedApiKey();
+        if (!hasKey) {
+          await window.aistudio.openSelectKey();
+        }
+      } catch (e) {
+        console.warn("API Key selection failed or cancelled", e);
+        // We continue anyway; geminiService will fallback to built-in config if key is missing
+      }
+    }
+
     try {
       const newRules = await generateRules(prompt);
       setConfig({ ...config, ...newRules });
@@ -180,6 +201,19 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 value={config.timeScale}
                 onChange={(e) => setConfig({...config, timeScale: parseFloat(e.target.value)})}
                 className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+              />
+           </div>
+
+           <div className="space-y-1">
+              <div className="flex justify-between text-xs text-slate-500">
+                <span>Ripple Strength</span>
+                <span>{config.rippleStrength?.toFixed(1) ?? "0.0"}</span>
+              </div>
+              <input 
+                type="range" min="0.0" max="5.0" step="0.1" 
+                value={config.rippleStrength ?? 0}
+                onChange={(e) => setConfig({...config, rippleStrength: parseFloat(e.target.value)})}
+                className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
               />
            </div>
         </div>

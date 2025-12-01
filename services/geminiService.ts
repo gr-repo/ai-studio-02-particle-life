@@ -15,6 +15,7 @@ const FALLBACK_CONFIG: Partial<SimulationConfig> = {
   friction: 0.15,
   cutOffRadius: 120,
   forceFactor: 0.5,
+  rippleStrength: 2.0,
 };
 
 export const generateRules = async (prompt: string): Promise<Partial<SimulationConfig>> => {
@@ -51,6 +52,7 @@ export const generateRules = async (prompt: string): Promise<Partial<SimulationC
     'friction' should be 0.0 to 1.0 (typical good range 0.05 - 0.5).
     'cutOffRadius' typically 50 to 200.
     'forceFactor' typically 0.1 to 1.0.
+    'rippleStrength' typically 1.0 to 5.0.
   `;
 
   try {
@@ -79,6 +81,7 @@ export const generateRules = async (prompt: string): Promise<Partial<SimulationC
             friction: { type: Type.NUMBER, description: "Friction coefficient (0.0 to 1.0)." },
             cutOffRadius: { type: Type.NUMBER, description: "Max interaction radius (pixels)." },
             forceFactor: { type: Type.NUMBER, description: "Strength of forces." },
+            rippleStrength: { type: Type.NUMBER, description: "Strength of click ripple effect." },
           },
           required: ["atomCounts", "interactionMatrix", "friction", "cutOffRadius", "forceFactor"]
         }
@@ -90,6 +93,11 @@ export const generateRules = async (prompt: string): Promise<Partial<SimulationC
     // Validate basics
     if (!json.interactionMatrix || json.interactionMatrix.length !== 6) {
        throw new Error("Invalid matrix generated");
+    }
+
+    // Ensure rippleStrength exists if model forgot it
+    if (typeof json.rippleStrength !== 'number') {
+      json.rippleStrength = 2.0;
     }
 
     return json;

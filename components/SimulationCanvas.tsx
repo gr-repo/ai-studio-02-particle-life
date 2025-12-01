@@ -65,10 +65,32 @@ export const SimulationCanvas: React.FC<SimulationCanvasProps> = ({ config, isPl
     return () => cancelAnimationFrame(frameIdRef.current);
   }, [isPlaying]);
 
+  const handleInteraction = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!engineRef.current || !canvasRef.current) return;
+
+    const rect = canvasRef.current.getBoundingClientRect();
+    let clientX, clientY;
+
+    if ('touches' in e) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = (e as React.MouseEvent).clientX;
+      clientY = (e as React.MouseEvent).clientY;
+    }
+
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+
+    engineRef.current.triggerRipple(x, y);
+  };
+
   return (
     <canvas 
       ref={canvasRef} 
-      className="block absolute inset-0 w-full h-full bg-slate-900"
+      className="block absolute inset-0 w-full h-full bg-slate-900 cursor-crosshair active:cursor-grabbing"
+      onMouseDown={handleInteraction}
+      onTouchStart={handleInteraction}
     />
   );
 };

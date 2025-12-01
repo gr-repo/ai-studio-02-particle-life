@@ -19,12 +19,12 @@ const INITIAL_CONFIG: SimulationConfig = {
   timeScale: 1.0,
   cutOffRadius: 80,
   forceFactor: 0.6,
+  rippleStrength: 2.0,
 };
 
 const App: React.FC = () => {
   const [config, setConfig] = useState<SimulationConfig>(INITIAL_CONFIG);
   const [isPlaying, setIsPlaying] = useState(true);
-  
   const [resetTrigger, setResetTrigger] = useState(0);
 
   const handleReset = useCallback(() => {
@@ -32,7 +32,7 @@ const App: React.FC = () => {
   }, []);
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden">
+    <div className="relative w-screen h-screen overflow-hidden bg-[#0f172a]">
       <SimulationCanvas 
         key={resetTrigger} 
         config={config} 
@@ -47,7 +47,7 @@ const App: React.FC = () => {
         onReset={handleReset}
       />
 
-      <div className="absolute bottom-4 left-4 pointer-events-none text-slate-500 text-xs z-10">
+      <div className="absolute bottom-4 left-4 pointer-events-none text-slate-500 text-xs z-10 select-none">
         <p>Particle Life Simulation</p>
         <p className="opacity-50">Inspired by Jeffrey Ventrella & Tom G</p>
       </div>
