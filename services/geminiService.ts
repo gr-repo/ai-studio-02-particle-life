@@ -110,3 +110,55 @@ export const generateRules = async (prompt: string): Promise<Partial<SimulationC
     return FALLBACK_CONFIG;
   }
 };
+
+export const explainSimulation = async (config: SimulationConfig): Promise<string> => {
+  let apiKey: string | undefined;
+  
+  try {
+    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+      apiKey = process.env.API_KEY;
+    }
+  } catch (e) {
+    console.warn("Could not access process.env.API_KEY:", e);
+  }
+
+  if (!apiKey) {
+    throw new Error("API Key required for explanation");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+  
+  const prompt = `
+    Analyze this Particle Life simulation configuration and explain the expected behavior.
+    
+    Configuration:
+    - Atom Counts: ${config.atomCounts.join(', ')} (Colors: Red, Green, Blue, Yellow, Purple, Cyan)
+    - Friction: ${config.friction.toFixed(2)} (0 is no friction, 1 is max)
+    - Interaction Radius: ${config.cutOffRadius} pixels
+    - Force Strength: ${config.forceFactor.toFixed(2)}
+    - Interaction Matrix (Row acts on Column):
+      ${config.interactionMatrix.map(row => JSON.stringify(row)).join('\n      ')}
+
+    Please provide a concise but insightful explanation of:
+    1. The dominant structures likely to emerge (e.g., gliders, cells, chains, chaos, expansion).
+    2. How the specific global parameters (friction, force) influence the movement (e.g., damping vs energetic).
+    3. Specific interesting interactions between color groups based on the matrix values.
+    
+    Keep the explanation under 200 words if possible.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-pro-preview",
+      contents: prompt,
+      config: {
+        systemInstruction: "You are a physicist analyzing a complex system. Keep the tone scientific but accessible.",
+      }
+    });
+
+    return response.text || "No explanation generated.";
+  } catch (error) {
+    console.error("Explanation Error", error);
+    return "Failed to generate explanation. Please ensure you have selected a valid API Key.";
+  }
+};
