@@ -16,7 +16,7 @@ const INITIAL_CONFIG: SimulationConfig = {
     [ 0.0,  0.0,  0.0,  0.0, 0, 0]
   ],
   friction: 0.2,
-  timeScale: 1.0,
+  timeScale: 0.4,
   cutOffRadius: 80,
   forceFactor: 0.6,
   rippleStrength: 2.0,
@@ -42,12 +42,10 @@ const App: React.FC = () => {
       <ControlPanel 
         config={config} 
         setConfig={setConfig} 
-        isPlaying={isPlaying} 
-        setIsPlaying={setIsPlaying}
         onReset={handleReset}
       />
 
-      <div className="absolute bottom-4 left-4 pointer-events-none text-slate-500 text-xs z-10 select-none">
+      <div className="absolute bottom-6 left-6 pointer-events-none text-slate-500 text-sm z-10 select-none">
         <p>Particle Life Simulation</p>
         <p className="opacity-50">Inspired by Jeffrey Ventrella & Tom G</p>
       </div>

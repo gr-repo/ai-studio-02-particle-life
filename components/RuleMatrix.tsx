@@ -60,7 +60,7 @@ const MatrixCell: React.FC<MatrixCellProps> = ({
 
   return (
     <div 
-      className="relative w-8 h-8 rounded border border-slate-700 overflow-hidden"
+      className="relative w-10 h-10 rounded border border-slate-700 overflow-hidden"
       style={{ backgroundColor: color }}
     >
       <input 
@@ -80,7 +80,7 @@ const MatrixCell: React.FC<MatrixCellProps> = ({
         autoComplete="off"
         autoCorrect="off"
         spellCheck="false"
-        className="w-full h-full bg-transparent text-center text-[10px] text-white font-mono focus:outline-none focus:bg-black/40 placeholder-transparent"
+        className="w-full h-full bg-transparent text-center text-xs text-white font-mono focus:outline-none focus:bg-black/40 placeholder-transparent"
       />
     </div>
   );
@@ -114,38 +114,38 @@ export const RuleMatrix: React.FC<RuleMatrixProps> = ({ config, onChange }) => {
   };
 
   return (
-    <div className="flex flex-col gap-2 p-2 bg-slate-800 rounded-lg shadow-lg">
-      <div className="flex justify-between items-center mb-1">
-        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Interaction Rules</h3>
+    <div className="flex flex-col gap-3 p-3 bg-slate-800 rounded-lg shadow-lg">
+      <div className="flex justify-between items-center mb-2">
+        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Interaction Rules</h3>
         <div className="flex gap-2">
           <button 
             onClick={setAllZero}
-            className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-[10px] text-slate-300 rounded border border-slate-600 transition-colors"
+            className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-xs text-slate-300 rounded border border-slate-600 transition-colors"
             title="Set all interactions to 0"
           >
             Zero
           </button>
           <button 
             onClick={setIdentity}
-            className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-[10px] text-slate-300 rounded border border-slate-600 transition-colors"
+            className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-xs text-slate-300 rounded border border-slate-600 transition-colors"
             title="Set diagonal to 1, others to 0"
           >
             Identity
           </button>
         </div>
       </div>
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-1.5">
         {/* Header Row */}
         <div className="col-span-1"></div>
         {config.colors.map((c, i) => (
-          <div key={`head-${i}`} className="w-6 h-6 rounded-full mx-auto border border-slate-600" style={{ backgroundColor: c }}></div>
+          <div key={`head-${i}`} className="w-8 h-8 rounded-full mx-auto border border-slate-600" style={{ backgroundColor: c }}></div>
         ))}
 
         {/* Rows */}
         {config.colors.map((cRow, rowIdx) => (
           <React.Fragment key={`row-${rowIdx}`}>
             {/* Row Label */}
-            <div className="w-6 h-6 rounded-full mx-auto border border-slate-600 self-center" style={{ backgroundColor: cRow }}></div>
+            <div className="w-8 h-8 rounded-full mx-auto border border-slate-600 self-center" style={{ backgroundColor: cRow }}></div>
             
             {/* Cells */}
             {config.interactionMatrix[rowIdx].map((val, colIdx) => (
@@ -161,7 +161,7 @@ export const RuleMatrix: React.FC<RuleMatrixProps> = ({ config, onChange }) => {
           </React.Fragment>
         ))}
       </div>
-      <div className="text-[10px] text-slate-500 text-center mt-1">
+      <div className="text-xs text-slate-500 text-center mt-2">
         Row is attracted to/repelled by Column
       </div>
     </div>
