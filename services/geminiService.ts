@@ -152,7 +152,7 @@ export const explainSimulation = async (config: SimulationConfig): Promise<strin
       model: "gemini-3-pro-preview",
       contents: prompt,
       config: {
-        systemInstruction: "You are a physicist analyzing a complex system. Keep the tone scientific but accessible.",
+        systemInstruction: "You are a physicist analyzing a complex system. Keep the tone scientific but accessible. Use '###' for section headers, '**' for bold terms, and '-' for list items.",
       }
     });
 

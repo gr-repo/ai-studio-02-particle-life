@@ -1,3 +1,4 @@
+
 import { SimulationConfig } from '../types';
 
 interface Ripple {
@@ -7,8 +8,7 @@ interface Ripple {
   strength: number;
 }
 
-export class ParticleEngine {
-  public canvas: HTMLCanvasElement;
+export default class ParticleEngine {
   public ctx: CanvasRenderingContext2D;
   
   // Physics State
@@ -28,23 +28,37 @@ export class ParticleEngine {
   private height: number = 0;
   private groupOffsets: number[] = [];
 
+  private isPlaying: boolean = true;
+  private animationId: number | null = null;
+
   constructor(canvas: HTMLCanvasElement, config: SimulationConfig) {
-    this.canvas = canvas;
     this.ctx = canvas.getContext('2d', { alpha: false }) as CanvasRenderingContext2D;
     this.config = config;
     this.resize(canvas.width, canvas.height);
     this.initParticles();
+    this.loop();
+  }
+
+  public destroy() {
+    this.isPlaying = false;
+    if (this.animationId !== null) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = null;
+    }
   }
 
   public resize(width: number, height: number) {
     this.width = width;
     this.height = height;
-    this.canvas.width = width;
-    this.canvas.height = height;
+    this.ctx.canvas.width = width;
+    this.ctx.canvas.height = height;
+    
+    if (!this.isPlaying) {
+      this.draw();
+    }
   }
 
   public setConfig(newConfig: SimulationConfig) {
-    // Check if we need to re-init particles (if counts changed)
     const countsChanged = 
       newConfig.atomCounts.length !== this.config.atomCounts.length ||
       newConfig.atomCounts.some((c, i) => c !== this.config.atomCounts[i]);
@@ -53,6 +67,18 @@ export class ParticleEngine {
 
     if (countsChanged) {
       this.initParticles();
+    } else if (!this.isPlaying) {
+      this.draw();
+    }
+  }
+
+  public setPlaying(playing: boolean) {
+    this.isPlaying = playing;
+    if (playing && !this.animationId) {
+      this.loop();
+    } else if (!playing && this.animationId !== null) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = null;
     }
   }
 
@@ -85,7 +111,6 @@ export class ParticleEngine {
   }
 
   public triggerRipple(x: number, y: number) {
-    // Only trigger if enabled
     if (this.config.rippleStrength > 0) {
       this.ripples.push({ 
         x, 
@@ -101,7 +126,6 @@ export class ParticleEngine {
     const rMax = cutOffRadius;
     const rMaxSq = rMax * rMax;
     const factor = forceFactor;
-    // Pre-calculate friction factor: v *= (1 - friction)
     const velocityRetention = Math.max(0, 1 - friction); 
 
     // Apply Ripples
@@ -113,26 +137,19 @@ export class ParticleEngine {
       ripple.age++;
       
       const currentRadius = ripple.age * RIPPLE_SPEED;
-      // Decay strength over time
       ripple.strength *= 0.95;
 
-      // Remove dead ripples
       if (ripple.strength < 0.05 || ripple.age > 300) {
         this.ripples.splice(r, 1);
         continue;
       }
 
-      const waveStrength = ripple.strength * 5.0; // Scale up for noticeable effect
+      const waveStrength = ripple.strength * 5.0;
 
-      // Apply ripple force to all particles
       for (let i = 0; i < this.numParticles; i++) {
         let dx = this.x[i] - ripple.x;
         let dy = this.y[i] - ripple.y;
 
-        // Correct for torus topology for ripples is tricky visually, 
-        // so we usually just do local ripples or explicit wrap.
-        // For simplicity, let's treat ripples as non-wrapping local events 
-        // or apply the nearest wrap distance.
         if (dx > this.width * 0.5) dx -= this.width;
         if (dx < -this.width * 0.5) dx += this.width;
         if (dy > this.height * 0.5) dy -= this.height;
@@ -141,12 +158,9 @@ export class ParticleEngine {
         const distSq = dx*dx + dy*dy;
         const dist = Math.sqrt(distSq);
 
-        // If particle is within the wave front
         const distFromWave = Math.abs(dist - currentRadius);
         if (distFromWave < RIPPLE_WIDTH) {
-           // Normalised distance within width (0 to 1)
            const intensity = 1 - (distFromWave / RIPPLE_WIDTH);
-           // Push away
            if (dist > 0.001) {
              const pushX = (dx / dist) * intensity * waveStrength;
              const pushY = (dy / dist) * intensity * waveStrength;
@@ -157,29 +171,39 @@ export class ParticleEngine {
       }
     }
 
-    // Particle Interactions O(N^2)
-    for (let i = 0; i < this.numParticles; i++) {
+    // Particle Interactions
+    const x = this.x;
+    const y = this.y;
+    const vx = this.vx;
+    const vy = this.vy;
+    const group = this.group;
+    const numParticles = this.numParticles;
+    const width = this.width;
+    const height = this.height;
+    const halfWidth = width * 0.5;
+    const halfHeight = height * 0.5;
+
+    for (let i = 0; i < numParticles; i++) {
       let fx = 0;
       let fy = 0;
-      const groupA = this.group[i];
+      const groupA = group[i];
 
-      for (let j = 0; j < this.numParticles; j++) {
+      for (let j = 0; j < numParticles; j++) {
         if (i === j) continue;
         
-        let dx = this.x[j] - this.x[i];
-        let dy = this.y[j] - this.y[i];
+        let dx = x[j] - x[i];
+        let dy = y[j] - y[i];
 
-        // Wrap around (Toroidal boundary)
-        if (dx > this.width * 0.5) dx -= this.width;
-        if (dx < -this.width * 0.5) dx += this.width;
-        if (dy > this.height * 0.5) dy -= this.height;
-        if (dy < -this.height * 0.5) dy += this.height;
+        if (dx > halfWidth) dx -= width;
+        else if (dx < -halfWidth) dx += width;
+        if (dy > halfHeight) dy -= height;
+        else if (dy < -halfHeight) dy += height;
 
         const distSq = dx*dx + dy*dy;
         
         if (distSq > 0 && distSq < rMaxSq) {
           const dist = Math.sqrt(distSq);
-          const f = this.interactionForce(dist / rMax, interactionMatrix[groupA][this.group[j]]);
+          const f = this.interactionForce(dist / rMax, interactionMatrix[groupA][group[j]]);
           
           const force = f * factor;
           fx += (dx / dist) * force;
@@ -187,20 +211,18 @@ export class ParticleEngine {
         }
       }
 
-      this.vx[i] = (this.vx[i] * velocityRetention) + (fx * timeScale);
-      this.vy[i] = (this.vy[i] * velocityRetention) + (fy * timeScale);
+      vx[i] = (vx[i] * velocityRetention) + (fx * timeScale);
+      vy[i] = (vy[i] * velocityRetention) + (fy * timeScale);
     }
 
-    // Apply Velocity
-    for (let i = 0; i < this.numParticles; i++) {
-      this.x[i] += this.vx[i] * timeScale;
-      this.y[i] += this.vy[i] * timeScale;
+    for (let i = 0; i < numParticles; i++) {
+      x[i] += vx[i] * timeScale;
+      y[i] += vy[i] * timeScale;
 
-      // Wrap positions
-      if (this.x[i] < 0) this.x[i] += this.width;
-      if (this.x[i] >= this.width) this.x[i] -= this.width;
-      if (this.y[i] < 0) this.y[i] += this.height;
-      if (this.y[i] >= this.height) this.y[i] -= this.height;
+      if (x[i] < 0) x[i] += width;
+      else if (x[i] >= width) x[i] -= width;
+      if (y[i] < 0) y[i] += height;
+      else if (y[i] >= height) y[i] -= height;
     }
   }
 
@@ -215,14 +237,12 @@ export class ParticleEngine {
   }
 
   public draw() {
-    // Clear
-    this.ctx.fillStyle = '#0f172a'; // Match body background
+    this.ctx.fillStyle = '#0f172a';
     this.ctx.fillRect(0, 0, this.width, this.height);
 
-    // Draw Ripples
     this.ctx.lineWidth = 2;
     for (const ripple of this.ripples) {
-      const radius = ripple.age * 6.0; // Match speed in update
+      const radius = ripple.age * 6.0;
       const alpha = Math.max(0, Math.min(1, ripple.strength));
       this.ctx.strokeStyle = `rgba(100, 200, 255, ${alpha * 0.5})`;
       this.ctx.beginPath();
@@ -230,7 +250,6 @@ export class ParticleEngine {
       this.ctx.stroke();
     }
 
-    // Draw Particles
     for (let g = 0; g < this.config.colors.length; g++) {
       if (this.config.atomCounts[g] === 0) continue;
       
@@ -243,10 +262,16 @@ export class ParticleEngine {
       for (let i = start; i < end; i++) {
         const px = this.x[i];
         const py = this.y[i];
-        // Using rect is faster than arc for thousands of particles
         this.ctx.rect(px - 1.5, py - 1.5, 3, 3);
       }
       this.ctx.fill();
     }
+  }
+
+  public loop = () => {
+    if (!this.isPlaying) return;
+    this.update();
+    this.draw();
+    this.animationId = requestAnimationFrame(this.loop);
   }
 }

@@ -1,3 +1,4 @@
+
 export interface SimulationConfig {
   atomCounts: number[]; // Number of atoms per group
   colors: string[];     // Hex colors for each group

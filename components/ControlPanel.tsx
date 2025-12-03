@@ -10,6 +10,17 @@ interface ControlPanelProps {
   onReset: () => void; // Resets positions but keeps rules
 }
 
+// Helper to parse simple bold markdown
+const parseMarkdown = (text: string) => {
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i} className="text-white font-bold">{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
+};
+
 export const ControlPanel: React.FC<ControlPanelProps> = ({ 
   config, setConfig, onReset 
 }) => {
@@ -244,11 +255,32 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                   </button>
                 </div>
                 <div className="prose prose-invert prose-sm max-w-none text-slate-300 text-sm max-h-96 overflow-y-auto custom-scrollbar pr-2">
-                   {explanation.split('\n').map((line, i) => (
-                     <p key={i} className="mb-2 last:mb-0 leading-relaxed">
-                       {line}
-                     </p>
-                   ))}
+                   {explanation.split('\n').map((line, i) => {
+                     // Headers (### or ##)
+                     if (line.startsWith('###') || line.startsWith('##')) {
+                        return <h3 key={i} className="text-purple-300 font-bold mt-4 mb-2 border-b border-slate-700 pb-1">{line.replace(/^#+\s*/, '')}</h3>;
+                     }
+                     
+                     // List items
+                     if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
+                        return (
+                          <div key={i} className="flex gap-2 ml-1 mb-1 items-start">
+                            <span className="text-slate-500 mt-1.5 text-[10px]">•</span>
+                            <span>{parseMarkdown(line.replace(/^[\-\*]\s/, ''))}</span>
+                          </div>
+                        );
+                     }
+                     
+                     // Empty lines
+                     if (!line.trim()) return <div key={i} className="h-2" />;
+                     
+                     // Standard Paragraphs
+                     return (
+                       <p key={i} className="mb-2 last:mb-0 leading-relaxed">
+                         {parseMarkdown(line)}
+                       </p>
+                     );
+                   })}
                 </div>
               </div>
             )}
